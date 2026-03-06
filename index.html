@@ -7,7 +7,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d1117' rx='40'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle'%3E%F0%9F%94%91%3C/text%3E%3C/svg%3E">
     <title>JWT Decoder - Inspect JSON Web Tokens</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230d1117' rx='20'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle'%3E🔑%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230d1117' rx='20'/%3E%3Ctext x='50' y='65' font-size='50' text-anchor='middle'%3E🔑%3C/text%3E%3C/svg%3E" type="image/svg+xml">
     <style>
         :root {
             --bg: #0d1117;
@@ -232,6 +233,12 @@
         const errorBar = document.getElementById('errorBar');
 
         jwtInput.addEventListener('input', debounce(decodeJWT, 300));
+        
+        jwtInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                decodeJWT();
+            }
+        });
 
         function debounce(fn, ms) {
             let timeout;
@@ -346,20 +353,35 @@
 
         function copyPayload() {
             const token = jwtInput.value.trim();
-            if (!token) return;
+            if (!token) {
+                showError('No JWT token to copy');
+                return;
+            }
             
             const parts = token.split('.');
-            if (parts.length !== 3) return;
+            if (parts.length !== 3) {
+                showError('Cannot copy: Invalid JWT format');
+                return;
+            }
+            
+            if (!navigator.clipboard) {
+                showError('Clipboard not available. Ensure you are on a secure (HTTPS) connection.');
+                return;
+            }
             
             try {
                 const payload = JSON.parse(base64UrlDecode(parts[1]));
-                navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-                
-                const btn = document.querySelector('button.primary');
-                const original = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = original, 1500);
-            } catch (e) {}
+                navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(() => {
+                    const btn = document.querySelector('button.primary');
+                    const original = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = original, 1500);
+                }).catch(() => {
+                    showError('Failed to copy to clipboard');
+                });
+            } catch (e) {
+                showError('Failed to decode payload for copying');
+            }
         }
 
         function showError(msg) {
